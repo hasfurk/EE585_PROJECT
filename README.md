@@ -1,1 +1,11 @@
 # EE585_PROJECT
+- Sim Environment
+    - Gazebo + ROS
+    - Visual processing (camera modeling)
+    - IMU Modeling
+    - Map selection, multiple maps can be tested against the algorithm
+    - Load / generate data options for real and (to-be) generated datasets
+- Algorithm implementation (Multi-State Constraint Kalman Filter)
+    - Literature search
+    - Implementation details and decisions
+    - Boundry conditions
