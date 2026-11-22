@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ee585-stream"
+version = "0.1.0"
+description = "MQTT stream contract for the EE585 visual-inertial provider"
+requires-python = ">=3.12"
+dependencies = [
+  "paho-mqtt>=2.0",
+  "protobuf>=5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "grpcio-tools>=1.60",
+]
+
+[tool.setuptools.packages.find]
+include = ["ee585_stream*"]

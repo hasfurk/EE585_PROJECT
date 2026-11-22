@@ -1,0 +1,17 @@
+schema_version: 1
+imu:
+  rate_hz: 200
+  gyro_noise_density: 1.6968e-4   # rad/s/sqrt(Hz); sigma = density*sqrt(rate_hz) ≈ 2.400e-3
+  accel_noise_density: 2.0e-3     # m/s^2/sqrt(Hz); sigma ≈ 2.828e-2
+  gravity_W: [0.0, 0.0, -9.81]
+camera:
+  width: 640
+  height: 480
+  rate_hz: 30
+  hfov_rad: 1.5707963             # fx = fy = (width/2)/tan(hfov/2) ≈ 320, cx = width/2, cy = height/2
+  pixel_noise_sigma: 0.5          # projections only; the rendered image has none
+  p_BC: [0.15, 0.0, 0.10]
+  R_BC: [[0, 0, 1], [-1, 0, 0], [0, -1, 0]]
+  min_range_m: 0.2
+  max_range_m: 20.0
+initial_rest_s: 1.0
