@@ -2,7 +2,43 @@ folder: stream/ee585_stream
 purpose: MQTT stream contract library
 files:
 - __init__.py — package marker; deps: none
-- consumer.py — stub for the record consumer; deps: none
-- link.py — stub for topics, encode/decode, and the bounded publisher; deps: none
-- recorder.py — stub for the run-log CLI; deps: none
-- replay.py — stub for the replay CLI; deps: none
+- consumer.py — yield calibration, records, and one terminal; deps: link.py, stream_pb2.py; io: network
+  - COMPLETED: str
+  - ABORTED: str
+  - STALLED: str
+  - DATA_ERROR: str
+  - class Terminal
+  - Terminal.__init__(self, reason: str, last_seq: int, last_t_ns: int) -> None
+  - class StreamChecks
+  - StreamChecks.__init__(self) -> None
+  - StreamChecks.observe(self, record: Record) -> str
+  - def write_run_status(path: str, terminal: Terminal) -> None
+  - class Consumer
+  - Consumer.__init__(self, host: str, port: int, stall_timeout_s: float = 5.0, startup_timeout_s: float = 60.0, *, evaluator: bool = False) -> None
+  - Consumer.subscribed: threading.Event
+  - Consumer.events(self) -> Iterator[Calibration | Record | Scene | TruthRecord | Terminal]
+- link.py — topics, encode/decode, bounded publisher, and pacing; deps: stream_pb2.py; io: network
+  - PREFIX: str
+  - TOPIC_STATUS: str
+  - TOPIC_CALIBRATION: str
+  - TOPIC_SCENE: str
+  - TOPIC_STREAM: str
+  - TOPIC_TRUTH: str
+  - def encode(msg: Message) -> bytes
+  - def decode(topic: str, payload: bytes) -> Message
+  - class Pacer
+  - Pacer.__init__(self, speed: float, t0_ns: int) -> None
+  - Pacer.wait_until(self, t_ns: int) -> None
+  - class Link
+  - Link.__init__(self, host: str = "127.0.0.1", port: int = 1883) -> None
+  - Link.connect(self, client_id: str, will: bool = True) -> None
+  - Link.publish(self, topic: str, payload: bytes, qos: int, retain: bool) -> None
+  - Link.finish(self, last_seq: int, last_t_ns: int) -> None
+  - Link.abort(self, detail: str) -> None
+- recorder.py — write a run log from MQTT; deps: consumer.py, link.py, stream_pb2.py; io: network, filesystem
+  - def main(argv: list[str] | None = None) -> None
+  - def record_run(run: Path, host: str, port: int, *, stall_timeout_s: float, startup_timeout_s: float) -> str
+- replay.py — republish a run log; deps: link.py, stream_pb2.py; io: network, filesystem
+  - def main(argv: list[str] | None = None) -> None
+  - def replay_run(run: Path, speed: float, host: str, port: int) -> None
+- stream.proto — wire schema version 1; deps: none

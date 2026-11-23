@@ -1,0 +1,78 @@
+syntax = "proto3";
+package ee585.v1;
+
+message Vec3 { double x = 1; double y = 2; double z = 3; }
+// Hamilton unit quaternion.
+message Quat { double w = 1; double x = 2; double y = 3; double z = 4; }
+
+// ---- stream topic ----
+message ImuSample {
+  Vec3 gyro_B  = 1;   // rad/s, body frame FLU, includes noise
+  Vec3 accel_B = 2;   // m/s^2, body frame, SPECIFIC FORCE (reads +g up at rest), includes noise
+}
+message ImageFrame {
+  uint32 width  = 1;
+  uint32 height = 2;
+  bytes  mono8  = 3;  // width*height bytes, row-major, no padding, row 0 is the top
+}
+message Observation {
+  uint32 landmark_id = 1;  // stable across the run
+  double u = 2;            // pixels
+  double v = 3;            // pixels
+}
+// Noisy synthetic projections for the image with the same t_ns. Always sent, possibly empty.
+message Projections { repeated Observation obs = 1; }
+message EndOfStream {}
+
+message Record {
+  uint64 seq  = 1;         // 0,1,2,... gapless over the stream topic
+  int64  t_ns = 2;         // simulation time, non-decreasing over the stream
+  oneof payload {
+    ImuSample    imu         = 10;
+    ImageFrame   image       = 11;
+    Projections  projections = 12;
+    EndOfStream  end         = 13;
+  }
+}
+// Order at equal t_ns: IMU, then image, then projections.
+
+// ---- calibration topic (retained) ----
+message Calibration {
+  uint32 schema_version = 1;     // 1
+  string map_name = 2;
+  double imu_rate_hz = 3;
+  double gyro_noise_density = 4;   // rad/s/sqrt(Hz); per-sample sigma = density*sqrt(imu_rate_hz)
+  double accel_noise_density = 5;  // m/s^2/sqrt(Hz)
+  Vec3   gravity_W = 6;            // (0,0,-9.81)
+  uint32 width = 7;
+  uint32 height = 8;
+  double camera_rate_hz = 9;
+  double fx = 10; double fy = 11; double cx = 12; double cy = 13;
+  double pixel_noise_sigma = 14;   // pixels, per axis, applied to Projections only
+  Vec3   p_BC = 15;
+  Quat   q_BC = 16;
+  double initial_rest_s = 17;      // robot is stationary for this long at the start
+}
+
+// ---- scene topic (retained, evaluator only) ----
+message Landmark { uint32 id = 1; Vec3 p_W = 2; }
+message Scene { repeated Landmark landmarks = 1; }
+
+// ---- truth topic (evaluator and recorder only) ----
+message Pose { Vec3 p_WB = 1; Quat q_WB = 2; }
+// Noiseless projections, same landmark ids and order as the noisy Projections of that frame.
+message TruthProjections { repeated Observation obs = 1; }
+message TruthRecord {
+  uint64 seq  = 1;               // own counter, gapless
+  int64  t_ns = 2;
+  oneof payload { Pose pose = 10; TruthProjections projections = 11; }
+}
+
+// ---- status topic (retained) ----
+message Status {
+  enum State { UNKNOWN = 0; ONLINE = 1; COMPLETED = 2; ABORTED = 3; }
+  State  state = 1;
+  int64  last_seq  = 2;          // -1 if unknown (the Last Will cannot know it)
+  int64  last_t_ns = 3;          // -1 if unknown
+  string detail = 4;
+}

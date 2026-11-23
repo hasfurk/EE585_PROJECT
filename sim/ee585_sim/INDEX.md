@@ -8,10 +8,52 @@ files:
 - broker.py — aMQTT broker on 127.0.0.1:1883; deps: none; io: network
   - CONFIG: dict[str, Any]
   - def main() -> None
-- maps.py — stub for map yaml, landmarks, and MJCF; deps: none
-- kinematics.py — stub for the closed-form unicycle; deps: none
-- imu.py — stub for analytic specific force and gyro; deps: none
-- projection.py — stub for pinhole projections; deps: none
-- follower.py — stub for pure pursuit; deps: none
-- model.py — stub for MJCF compile, qpos, and render; deps: none
+- kinematics.py — closed-form unicycle, quaternions, and stamps; deps: none
+  - def propagate(x: float, y: float, yaw: float, v: float, omega: float, tau: float) -> tuple[float, float, float]
+  - def quat_from_yaw(yaw: float) -> tuple[float, float, float, float]
+  - def quat_from_matrix(rotation: np.ndarray) -> tuple[float, float, float, float]
+  - def imu_stamp(index: int) -> int
+  - def camera_stamp(index: int) -> int
+- imu.py — analytic specific force, gyro, and Gaussian noise; deps: none
+  - DT_S: float
+  - G_W: tuple[float, float, float]
+  - def rest_sample() -> tuple[tuple[float, float, float], tuple[float, float, float]]
+  - def true_sample(v: float, v_prev: float, omega: float, yaw: float, dt: float = DT_S) -> tuple[tuple[float, float, float], tuple[float, float, float]]
+  - class ImuNoise
+  - ImuNoise.__init__(self, seed: int, gyro_density: float, accel_density: float, rate_hz: float) -> None
+  - ImuNoise.apply(self, gyro: tuple[float, float, float], accel: tuple[float, float, float]) -> tuple[tuple[float, float, float], tuple[float, float, float]]
+- maps.py — map yaml, landmarks, MJCF, and textures; deps: model.py; io: filesystem
+  - WALL_THICKNESS_M: float
+  - LANDMARK_OFFSET_M: float
+  - LANDMARK_Z_MIN: float
+  - LANDMARK_Z_MARGIN: float
+  - def load_map(path: Path) -> dict[str, Any]
+  - def generate_landmarks(map: dict[str, Any]) -> list[dict[str, Any]]
+  - def render_world(map: dict[str, Any], calibration: dict[str, Any]) -> str
+  - def occluders(map: dict[str, Any]) -> list[dict[str, Any]]
+  - def render_textures(out_dir: Path) -> None
+  - def build(map_path: Path, out_dir: Path, calibration_path: Path | None = None) -> None
+  - def main(argv: list[str] | None = None) -> None
+- model.py — calibration, MJCF compile, pose, sensors, and render; deps: glsetup.py, kinematics.py; io: filesystem
+  - def load_calibration(path: Path) -> dict[str, Any]
+  - def load_model(path: Path) -> tuple[mujoco.MjModel, mujoco.MjData]
+  - def set_pose(model: mujoco.MjModel, data: mujoco.MjData, x: float, y: float, yaw: float) -> None
+  - def set_rate(model: mujoco.MjModel, data: mujoco.MjData, vx: float, vy: float, yaw_rate: float) -> None
+  - def read_sensors(model: mujoco.MjModel, data: mujoco.MjData) -> tuple[np.ndarray, np.ndarray]
+  - def rgb_to_mono(rgb: np.ndarray) -> np.ndarray
+  - def render_rgb(model: mujoco.MjModel, data: mujoco.MjData, width: int, height: int) -> np.ndarray
+- projection.py — pinhole landmarks, occlusion, and pixel noise; deps: none
+  - class Observation(NamedTuple)
+  - Observation.landmark_id: int
+  - Observation.u: float
+  - Observation.v: float
+  - class Projector
+  - Projector.__init__(self, calib: dict[str, Any], landmarks: np.ndarray, occluders: list[dict[str, Any]], seed: int) -> None
+  - Projector.project(self, t_ns: int, p_WB: np.ndarray, q_WB: np.ndarray) -> tuple[list[Observation], list[Observation]]
+  - def rotation_matrix(quaternion: np.ndarray) -> np.ndarray
+- follower.py — pure pursuit on a map polyline; deps: none
+  - class Follower
+  - Follower.__init__(self, path: dict[str, Any], initial_rest_s: float) -> None
+  - Follower.done(self) -> bool
+  - Follower.command(self, t_ns: int, x: float, y: float, yaw: float) -> tuple[float, float]
 - provider_mj.py — stub for the live provider CLI; deps: none
